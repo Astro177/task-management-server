@@ -3,7 +3,7 @@ require("dotenv").config();
 const cors = require("cors");
 const app = express();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const port = process.env.PORT || 8000;
+const port = process.env.PORT || 5000;
 
 app.use(cors());
 app.use(express.json());
@@ -24,58 +24,49 @@ async function run() {
     // Connect the client to the server	(optional starting in v4.7)
     await client.connect();
 
-    const userCollection = client.db("TaskDB").collection("users");
-    const workCollection = client.db("TaskDB").collection("works");
+    const tasksCollection = client.db("TaskDB").collection("tasks");
 
-    app.post("/works", async (req, res) => {
+    app.post("/tasks", async (req, res) => {
       const addWork = req.body;
-      console.log(addWork);
-      const result = await workCollection.insertOne(addWork);
+      const result = await tasksCollection.insertOne(addWork);
       res.send(result);
     });
 
-    app.get("/worksInfo/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await workCollection.findOne(query);
-      res.send(result);
-    });
-
-    app.get("/users", async (req, res) => {
-      console.log(req.headers);
-      const cursor = userCollection.find();
-      const result = await cursor.toArray();
-      res.send(result);
-    });
-
-    app.post("/users", async (req, res) => {
-      const user = req.body;
-      const query = { email: user.email };
-      const existingUser = await userCollection.findOne(query);
-      if (existingUser) {
-        return res.send({ message: "user already exists", insertedId: null });
+    app.get("/tasks", async (req, res) => {
+      let query = {};
+      if (req.query.priority) {
+        query.priority = req.query.priority;
       }
-      const result = await userCollection.insertOne(user);
-      res.send(result);
-    });
-    app.get("/workdatas/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await workCollection.findOne(query);
-      res.send(result);
-    });
-
-    app.delete("/workdata/:id", async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
-      const result = await workCollection.deleteOne(query);
-      res.send(result);
-    });
-
-    app.get("/workdata", async (req, res) => {
-      console.log(req.headers);
-      const cursor = workCollection.find();
+      const cursor = tasksCollection.find(query);
       const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.put("/tasks/:id", async (req, res) => {
+      const id = req.params.id;
+      const body = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          task: body.task,
+          description: body.description,
+          priority: body.priority,
+          isCompleted: body.isCompleted,
+        },
+      };
+      const options = { upsert: true };
+      const result = await tasksCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    app.delete("/task/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await tasksCollection.deleteOne(query);
       res.send(result);
     });
 
