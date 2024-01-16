@@ -25,6 +25,7 @@ async function run() {
     await client.connect();
 
     const tasksCollection = client.db("TaskDB").collection("tasks");
+    const recipeCollection = client.db("TaskDB").collection("recipes");
 
     app.post("/tasks", async (req, res) => {
       const addWork = req.body;
@@ -70,6 +71,55 @@ async function run() {
       res.send(result);
     });
 
+    //recipe api
+
+    app.post("/recipes", async (req, res) => {
+      const addWork = req.body;
+      const result = await recipeCollection.insertOne(addWork);
+      res.send(result);
+    });
+
+    app.get("/recipes", async (req, res) => {
+      const titleQuery = req.query.title;
+      const query = {
+        title: {
+          $regex: new RegExp(titleQuery, "i"),
+        },
+      };
+
+      const cursor = recipeCollection.find(query);
+      const result = await cursor.toArray();
+      res.send(result);
+    });
+
+    app.put("/recipe/:id", async (req, res) => {
+      const id = req.params.id;
+      const body = req.body;
+      const filter = { _id: new ObjectId(id) };
+      const updatedDoc = {
+        $set: {
+          title: body.title,
+          description: body.description,
+          image: body.image,
+          ingredients: body.ingredients,
+        },
+      };
+      const options = { upsert: true };
+      const result = await recipeCollection.updateOne(
+        filter,
+        updatedDoc,
+        options
+      );
+      res.send(result);
+    });
+
+    app.delete("/recipe/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+      const result = await recipeCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
@@ -83,9 +133,9 @@ async function run() {
 run().catch(console.dir);
 
 app.get("/", (req, res) => {
-  res.send("Hello From Task Management");
+  res.send({ success: true, message: "Welcome to the manager APi" });
 });
 
 app.listen(port, () => {
-  console.log(`Task Management is running ${port}`);
+  console.log(`Server is running ${port}`);
 });
